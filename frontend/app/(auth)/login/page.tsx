@@ -35,8 +35,13 @@ function LoginForm() {
           return
         }
         const actualRole = userData?.role || role
-        if (role === "official" && actualRole === "citizen") {
-          localStorage.setItem("cv_pending_official", "true")
+        if (role === "official" && actualRole !== "official") {
+          setError("This account is not registered as an official. Use the Citizen tab, or sign up as Official.")
+          return
+        }
+        if (role === "citizen" && actualRole === "official") {
+          router.push(redirectTo || "/official-dashboard")
+          return
         }
         router.push(actualRole === "official" ? redirectTo || "/official-dashboard" : redirectTo || "/community-feed")
       })

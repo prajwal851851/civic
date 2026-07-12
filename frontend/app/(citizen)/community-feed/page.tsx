@@ -60,6 +60,7 @@ const STATUS_LABELS: Record<string, string> = {
   open: "Open",
   in_review: "In Review",
   resolved: "Resolved",
+  rejected: "Rejected",
 }
 
 const CATEGORY_OPTS = [

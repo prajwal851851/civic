@@ -42,6 +42,15 @@ class CitizenSignupSerializer(serializers.ModelSerializer):
         return user
 
 
+class OfficialSignupSerializer(CitizenSignupSerializer):
+    def create(self, validated_data):
+        validated_data.pop("confirm_password", None)
+        validated_data["role"] = User.Role.OFFICIAL
+        validated_data["is_verified"] = True
+        user = User.objects.create_user(**validated_data)
+        return user
+
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)

@@ -15,7 +15,7 @@ export default function SignupPage() {
 }
 
 function SignupForm() {
-  const { signup, loading } = useAuth()
+  const { signup, signupOfficial, loading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<"citizen" | "official">("citizen")
   const [showPw, setShowPw] = useState(false)
@@ -78,10 +78,10 @@ function SignupForm() {
     const confirm_password = (form.querySelector("#offSignupConfirm") as HTMLInputElement).value
     const phone_number = (form.querySelector("#offSignupPhone") as HTMLInputElement).value
     const ward_number = parseInt((form.querySelector("#offSignupWard") as HTMLInputElement).value, 10)
-    signup({ email, full_name, password, confirm_password, phone_number, municipality: "Kathmandu", ward_number })
+    signupOfficial({ email, full_name, password, confirm_password, phone_number, municipality: "Kathmandu", ward_number })
       .then(() => {
-        localStorage.setItem("cv_pending_official", "true")
-        router.push("/community-feed")
+        localStorage.removeItem("cv_pending_official")
+        router.push("/official-dashboard")
       })
       .catch((err: unknown) => {
         if (err && typeof err === "object" && "message" in err) {

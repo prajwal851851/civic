@@ -61,6 +61,11 @@ export async function register(data: SignupData): Promise<AuthResponse> {
   return response.data
 }
 
+export async function registerOfficial(data: SignupData): Promise<AuthResponse> {
+  const response = await api.post<AuthResponse>("/accounts/signup/official/", data)
+  return response.data
+}
+
 export async function refreshToken(
   refresh: string,
 ): Promise<{ access: string }> {

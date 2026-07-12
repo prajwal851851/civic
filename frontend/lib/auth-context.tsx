@@ -166,6 +166,7 @@ interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<User>
   signup: (data: authApi.SignupData) => Promise<void>
+  signupOfficial: (data: authApi.SignupData) => Promise<void>
   logout: () => Promise<void>
   updateUser: (updates: Partial<User>) => void
   refreshUser: () => Promise<void>
@@ -177,6 +178,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: false,
   login: async () => { throw new Error("AuthProvider not mounted") },
   signup: async () => {},
+  signupOfficial: async () => {},
   logout: async () => {},
   updateUser: () => {},
   refreshUser: async () => {},
@@ -252,6 +254,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.register(data)
       saveTokens(response.access, response.refresh)
       setUser(mapUserData(response.user as Record<string, unknown>))
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cv_pending_official")
+      }
+    } catch (err) {
+      const apiErr = handleApiError(err)
+      throw new Error(apiErr.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const signupOfficial = useCallback(async (data: authApi.SignupData) => {
+    setLoading(true)
+    try {
+      const response = await authApi.registerOfficial(data)
+      saveTokens(response.access, response.refresh)
+      setUser(mapUserData(response.user as Record<string, unknown>))
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cv_pending_official")
+      }
     } catch (err) {
       const apiErr = handleApiError(err)
       throw new Error(apiErr.message)
@@ -288,12 +310,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null)
       clearTokens()
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cv_pending_official")
+      }
       setLoading(false)
     }
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, initialized, loading, login, signup, logout, updateUser, refreshUser }}>
+    <AuthContext.Provider value={{ user, initialized, loading, login, signup, signupOfficial, logout, updateUser, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
