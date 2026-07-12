@@ -9,7 +9,7 @@ import type { FeedReport } from "@/lib/api/reports"
 import { getNotices } from "@/lib/api/notices"
 
 const HERO_PHOTO_MAIN = "https://images.unsplash.com/photo-1605640840605-14ac1855827b?w=1200&q=80&auto=format&fit=crop"
-const HERO_PHOTO_SMALL = "https://images.unsplash.com/photo-1558799401-1dcba79834c2?w=640&q=80&auto=format&fit=crop"
+const HERO_PHOTO_SMALL = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=640&q=80&auto=format&fit=crop"
 const MISSION_PHOTO = "https://images.unsplash.com/photo-1611516491426-03025e6043c8?w=1000&q=80&auto=format&fit=crop"
 
 function statusLabel(s: string) {
@@ -165,8 +165,9 @@ export default function Home() {
     }
   }, [])
 
-  const featured = recentReports[0]
-  const restReports = recentReports.slice(1, 4)
+  const featured =
+    recentReports.find((r) => (r.images?.length ?? 0) > 0) ?? recentReports[0]
+  const restReports = recentReports.filter((r) => r.id !== featured?.id).slice(0, 3)
 
   return (
     <>
@@ -210,6 +211,11 @@ export default function Home() {
                   </figure>
                   {featured && (
                     <Link href={`/report-details/${featured.id}`} className="ed-hero-ticket">
+                      {featured.images?.length > 0 && (
+                        <span className="ed-ticket-photo">
+                          <img src={featured.images[0].image} alt="" loading="lazy" />
+                        </span>
+                      )}
                       <span className="ed-ticket-tag">Latest report</span>
                       <span className="ed-ticket-title">{featured.title}</span>
                       <span className="ed-ticket-meta">

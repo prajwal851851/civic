@@ -16,12 +16,25 @@ from django.utils import timezone
 from accounts.models import User
 from comments.models import Comment
 from notices.models import Notice
-from reports.models import Report
+from reports.models import Report, ReportImage
 from upvotes.models import Upvote
 
 DEMO_DOMAIN = "demo.civicvoice.app"
 DEMO_PASSWORD = "Demo@12345"
 MUNI = "Kathmandu"
+
+# Category-relevant Unsplash photos (uploaded to Cloudinary during seed).
+CATEGORY_PHOTOS = {
+    "roads": "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=900&q=80&auto=format&fit=crop",
+    "garbage": "https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?w=900&q=80&auto=format&fit=crop",
+    "water": "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=900&q=80&auto=format&fit=crop",
+    "street_lights": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=900&q=80&auto=format&fit=crop",
+    "sewage": "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=900&q=80&auto=format&fit=crop",
+    "electricity": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=900&q=80&auto=format&fit=crop",
+    "parks": "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=900&q=80&auto=format&fit=crop",
+    "noise": "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=900&q=80&auto=format&fit=crop",
+    "other": "https://images.unsplash.com/photo-1590674899484-d5640e854abe?w=900&q=80&auto=format&fit=crop",
+}
 
 
 class Command(BaseCommand):
@@ -37,9 +50,16 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         existing = User.objects.filter(email__endswith=f"@{DEMO_DOMAIN}")
         if existing.exists() and not options["force"]:
+            reports = list(
+                Report.objects.filter(citizen__email__endswith=f"@{DEMO_DOMAIN}")
+                .prefetch_related("images")
+                .order_by("id")
+            )
+            attached = self._ensure_demo_photos(reports)
             self.stdout.write(
                 self.style.WARNING(
                     f"Demo data already present ({existing.count()} users). "
+                    f"Attached photos to {attached} reports missing images. "
                     "Use --force to recreate."
                 )
             )
@@ -59,12 +79,47 @@ class Command(BaseCommand):
             self._create_notices(officials)
             self._apply_progress(reports, officials)
 
+        # Outside atomic so Cloudinary network I/O isn't wrapped in a DB txn
+        attached = self._ensure_demo_photos(reports)
+
         self.stdout.write(self.style.SUCCESS(
             f"Seeded demo data: {len(officials)} officials, {len(citizens)} citizens, "
-            f"{len(reports)} reports, comments, upvotes, notices.\n"
+            f"{len(reports)} reports ({attached} with photos), comments, upvotes, notices.\n"
             f"Login any demo user with password: {DEMO_PASSWORD}\n"
             f"Examples: ramesh.thapa@{DEMO_DOMAIN} | ward3.official@{DEMO_DOMAIN}"
         ))
+
+    def _ensure_demo_photos(self, reports):
+        """Attach a relevant photo to roughly half of demo reports (odd indexes skipped)."""
+        try:
+            from cloudinary import uploader
+        except Exception:
+            self.stdout.write(self.style.WARNING("Cloudinary unavailable — skipping demo photos."))
+            return 0
+
+        attached = 0
+        for i, report in enumerate(reports):
+            # Leave every other report without a photo
+            if i % 2 == 1:
+                continue
+            if report.images.exists():
+                continue
+            url = CATEGORY_PHOTOS.get(report.category) or CATEGORY_PHOTOS["other"]
+            try:
+                result = uploader.upload(
+                    url,
+                    folder="civicvoice/demo",
+                    public_id=f"demo_report_{report.id}",
+                    overwrite=True,
+                    resource_type="image",
+                )
+                ReportImage.objects.create(report=report, image=result["public_id"])
+                attached += 1
+            except Exception as exc:
+                self.stdout.write(
+                    self.style.WARNING(f"Could not attach photo to report {report.id}: {exc}")
+                )
+        return attached
 
     def _create_officials(self):
         data = [

@@ -185,8 +185,8 @@ export default function CommunityFeedPage() {
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({})
   const [commentSubmitting, setCommentSubmitting] = useState<Record<number, boolean>>({})
   const [commentLoading, setCommentLoading] = useState<Record<number, boolean>>({})
-  const [mediaIndex, setMediaIndex] = useState<Record<number, number>>({})
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [lightbox, setLightbox] = useState<{ urls: string[]; index: number } | null>(null)
 
   const filterRef = useRef<HTMLDivElement>(null)
 
@@ -456,6 +456,7 @@ export default function CommunityFeedPage() {
   )
 
   return (
+    <>
     <div id="feedView" style={{ display: "block" }}>
       <div className="feed-container">
         <OfficialPendingBanner />
@@ -728,63 +729,26 @@ export default function CommunityFeedPage() {
                     {(report.images.length > 0 || report.videos.length > 0) && (
                       <div className="post-media">
                         {report.images.length > 0 && (
-                          <>
-                            <div className="post-media-carousel">
-                              {report.images.length > 1 && (
+                          <div className="post-media-thumbs">
+                            {report.images.slice(0, 4).map((img, i) => {
+                              const urls = report.images.map((x) => x.image)
+                              const isLastVisible = i === 3 && report.images.length > 4
+                              return (
                                 <button
-                                  className="carousel-arrow carousel-arrow--left"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setMediaIndex((prev) => ({
-                                      ...prev,
-                                      [report.id]: Math.max(0, (prev[report.id] || 0) - 1),
-                                    }))
-                                  }}
-                                  aria-label="Previous image"
+                                  key={img.id}
+                                  type="button"
+                                  className="post-media-thumb"
+                                  onClick={() => setLightbox({ urls, index: i })}
+                                  aria-label={`Preview photo ${i + 1} of ${report.images.length}`}
                                 >
-                                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                                  <img src={img.image} alt="" loading="lazy" />
+                                  {isLastVisible && (
+                                    <span className="post-media-thumb-more">+{report.images.length - 4}</span>
+                                  )}
                                 </button>
-                              )}
-                              <div className="post-media-item">
-                                <img
-                                  src={report.images[mediaIndex[report.id] || 0].image}
-                                  alt={report.title}
-                                  loading="lazy"
-                                  onClick={() => {
-                                    const next = ((mediaIndex[report.id] || 0) + 1) % report.images.length
-                                    setMediaIndex((prev) => ({ ...prev, [report.id]: next }))
-                                  }}
-                                />
-                              </div>
-                              {report.images.length > 1 && (
-                                <button
-                                  className="carousel-arrow carousel-arrow--right"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setMediaIndex((prev) => ({
-                                      ...prev,
-                                      [report.id]: Math.min(report.images.length - 1, (prev[report.id] || 0) + 1),
-                                    }))
-                                  }}
-                                  aria-label="Next image"
-                                >
-                                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
-                                </button>
-                              )}
-                            </div>
-                            {report.images.length > 1 && (
-                              <div className="carousel-dots">
-                                {report.images.map((_, i) => (
-                                  <button
-                                    key={i}
-                                    className={"carousel-dot" + (i === (mediaIndex[report.id] || 0) ? " active" : "")}
-                                    onClick={() => setMediaIndex((prev) => ({ ...prev, [report.id]: i }))}
-                                    aria-label={`Image ${i + 1}`}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </>
+                              )
+                            })}
+                          </div>
                         )}
                         {report.videos.map((v) => (
                           <div key={v.id} className="post-media-item post-media-item--video">
@@ -924,5 +888,70 @@ export default function CommunityFeedPage() {
         )}
       </div>
     </div>
+
+    {lightbox && (
+      <div
+        className="cf-lightbox"
+        onClick={() => setLightbox(null)}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Photo preview"
+      >
+        <button
+          type="button"
+          className="cf-lightbox-close"
+          onClick={() => setLightbox(null)}
+          aria-label="Close preview"
+        >
+          <i className="fa-solid fa-xmark" />
+        </button>
+        {lightbox.urls.length > 1 && (
+          <button
+            type="button"
+            className="cf-lightbox-nav cf-lightbox-nav--prev"
+            onClick={(e) => {
+              e.stopPropagation()
+              setLightbox((prev) =>
+                prev
+                  ? { ...prev, index: (prev.index - 1 + prev.urls.length) % prev.urls.length }
+                  : prev,
+              )
+            }}
+            aria-label="Previous photo"
+          >
+            <i className="fa-solid fa-chevron-left" />
+          </button>
+        )}
+        <img
+          src={lightbox.urls[lightbox.index]}
+          alt="Report photo preview"
+          className="cf-lightbox-img"
+          onClick={(e) => e.stopPropagation()}
+        />
+        {lightbox.urls.length > 1 && (
+          <button
+            type="button"
+            className="cf-lightbox-nav cf-lightbox-nav--next"
+            onClick={(e) => {
+              e.stopPropagation()
+              setLightbox((prev) =>
+                prev
+                  ? { ...prev, index: (prev.index + 1) % prev.urls.length }
+                  : prev,
+              )
+            }}
+            aria-label="Next photo"
+          >
+            <i className="fa-solid fa-chevron-right" />
+          </button>
+        )}
+        {lightbox.urls.length > 1 && (
+          <span className="cf-lightbox-count">
+            {lightbox.index + 1} / {lightbox.urls.length}
+          </span>
+        )}
+      </div>
+    )}
+    </>
   )
 }
