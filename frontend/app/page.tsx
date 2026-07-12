@@ -232,13 +232,17 @@ export default function Home() {
                   ) : recentReports.length === 0 ? (
                     <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--color-muted)', padding: 40, fontSize: 14 }}>No reports yet.</p>
                   ) : (
-                    recentReports.filter((r) => r.images?.length > 0 || r.videos?.length > 0).map((r) => (
+                    recentReports.map((r) => (
                       <Link key={r.id} href={`/report-details/${r.id}`} className="hm-report-link">
                         <article className="hm-report">
                           <div className="hm-report-img">
                             {r.images?.length ? (
                               <img src={r.images[0].image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-                            ) : null}
+                            ) : (
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-surface-2, #1e293b)', color: 'var(--color-muted)', fontSize: 28 }}>
+                                <i className="fa-solid fa-clipboard-list"></i>
+                              </div>
+                            )}
                           </div>
                           <div className="hm-report-body">
                             <div className="hm-report-meta">

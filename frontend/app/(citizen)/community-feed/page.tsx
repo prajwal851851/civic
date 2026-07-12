@@ -625,7 +625,7 @@ export default function CommunityFeedPage() {
         {!loading && !error && data && data.results.length > 0 && (
           <>
             <div className="feed-list" id="feedList">
-              {data.results.filter((r) => r.images.length > 0 || r.videos.length > 0).map((report) => {
+              {data.results.map((report) => {
                 const catIcon = CATEGORY_ICONS[report.category] || "fa-clipboard"
                 const catName = CATEGORY_LABELS[report.category] || report.category
                 const reportStatus = STATUS_LABELS[report.status] || report.status
