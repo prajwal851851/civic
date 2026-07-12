@@ -38,3 +38,12 @@ Frontend defaults to `http://localhost:8000/api`.
 In the Vercel project: **Settings → General → Root Directory** → set to `frontend` → Save → Redeploy.
 
 The Next.js app lives in `frontend/`; building from the repo root will fail.
+
+## Render (backend)
+
+Repo includes `render.yaml` for a Blueprint deploy:
+
+1. Render → **Blueprints** → New → `prajwal851851/civic` → branch `main` → path `render.yaml`
+2. Apply (`civicvoice-api` + Postgres)
+3. Set env vars: Cloudinary keys + `CORS_ALLOWED_ORIGINS` (your Vercel URL)
+4. Set frontend `NEXT_PUBLIC_API_URL` to `https://<your-api>.onrender.com/api`
