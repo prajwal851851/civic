@@ -762,6 +762,28 @@ ul { list-style: none; margin: 0; padding: 0; }
 .status-badge[data-status="resolved"] { background: #D1FAE5; color: #059669; }
 .status-badge[data-status="rejected"] { background: #FEE2E2; color: #991B1B; }
 
+.cf-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-danger);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.cf-delete-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+}
+.cf-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .post-title {
   font-size: 16px;
   font-weight: 600;
@@ -1264,6 +1286,16 @@ ul { list-style: none; margin: 0; padding: 0; }
   cursor: not-allowed;
 }
 .rd-action-btn .upvoted-icon { color: var(--color-primary); }
+.rd-action-btn--danger {
+  color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
+  margin-left: auto;
+}
+.rd-action-btn--danger:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
 
 /* Sections */
 .rd-section {

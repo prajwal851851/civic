@@ -5,9 +5,10 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useSearch } from "@/lib/search-context"
-import { getFeed, upvoteReport, removeUpvote } from "@/lib/api/reports"
+import { getFeed, upvoteReport, removeUpvote, deleteReport } from "@/lib/api/reports"
 import type { FeedReport, FeedResponse } from "@/lib/api/reports"
 import { getComments, createComment } from "@/lib/api/comments"
+import { handleApiError } from "@/lib/api/error-handler"
 import OfficialPendingBanner from "@/components/OfficialPendingBanner"
 
 interface CommentType {
@@ -185,6 +186,7 @@ export default function CommunityFeedPage() {
   const [commentSubmitting, setCommentSubmitting] = useState<Record<number, boolean>>({})
   const [commentLoading, setCommentLoading] = useState<Record<number, boolean>>({})
   const [mediaIndex, setMediaIndex] = useState<Record<number, number>>({})
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const filterRef = useRef<HTMLDivElement>(null)
 
@@ -342,6 +344,28 @@ export default function CommunityFeedPage() {
       navigator.clipboard.writeText(url).catch(() => {})
     }
   }, [])
+
+  const handleDeleteOwnReport = useCallback(async (reportId: number) => {
+    if (!user || user.role !== "citizen") return
+    if (!confirm("Delete this report permanently? This cannot be undone.")) return
+    setDeletingId(reportId)
+    try {
+      await deleteReport(reportId)
+      setData((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          count: Math.max(0, prev.count - 1),
+          results: prev.results.filter((r) => r.id !== reportId),
+        }
+      })
+    } catch (err) {
+      const apiErr = handleApiError(err)
+      alert(apiErr.message || "Could not delete report.")
+    } finally {
+      setDeletingId(null)
+    }
+  }, [user])
 
   const toggleComments = useCallback(async (reportId: number) => {
     if (cfOpenCommentId === reportId) {
@@ -661,6 +685,23 @@ export default function CommunityFeedPage() {
                         <span className="status-badge" data-status={report.status}>
                           {reportStatus}
                         </span>
+                        {user?.role === "citizen" && String(user.id) === String(report.citizen) && (
+                          <button
+                            type="button"
+                            className="cf-delete-btn"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              handleDeleteOwnReport(report.id)
+                            }}
+                            disabled={deletingId === report.id}
+                            aria-label="Delete your report"
+                            title="Delete your report"
+                          >
+                            <i className="fa-solid fa-trash" />
+                            <span>{deletingId === report.id ? "Deleting..." : "Delete"}</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 

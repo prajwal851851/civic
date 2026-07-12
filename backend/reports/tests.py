@@ -111,6 +111,21 @@ class ReportAPITests(APITestCase):
         res = self.client.delete(f"/api/reports/{report_id}/")
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
 
+    def test_citizen_cannot_delete_others_report(self):
+        other = User.objects.create_user(
+            email="other@test.com",
+            full_name="Other Citizen",
+            password="Pass1234!",
+            role=User.Role.CITIZEN,
+        )
+        self.client.force_authenticate(other)
+        res = self.client.post("/api/reports/", self.report_data)
+        report_id = res.data["id"]
+
+        self.client.force_authenticate(self.citizen)
+        res = self.client.delete(f"/api/reports/{report_id}/")
+        self.assertIn(res.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND))
+
 
 class FeedAPITests(APITestCase):
     def setUp(self):

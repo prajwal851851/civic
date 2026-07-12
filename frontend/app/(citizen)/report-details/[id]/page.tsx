@@ -3,12 +3,11 @@
 import { use, useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { getReport } from "@/lib/api/reports"
+import { getReport, deleteReport, upvoteReport, removeUpvote } from "@/lib/api/reports"
 import {
   getComments,
   createComment,
 } from "@/lib/api/comments"
-import { upvoteReport, removeUpvote } from "@/lib/api/reports"
 import { handleApiError } from "@/lib/api/error-handler"
 import { useAuth } from "@/lib/auth-context"
 import type { FeedImage, FeedVideo } from "@/lib/api/reports"
@@ -147,6 +146,8 @@ export default function ReportDetailsPage({ params }: Props) {
 
   const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({})
   const [expandedImg, setExpandedImg] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -210,6 +211,27 @@ export default function ReportDetailsPage({ params }: Props) {
       setUpvoting(false)
     }
   }, [id, hasUpvoted, upvoting])
+
+  const isOwner =
+    !!user &&
+    user.role === "citizen" &&
+    !!report &&
+    String(user.id) === String(report.citizen)
+
+  const handleDelete = useCallback(async () => {
+    if (!report || deleting) return
+    if (!confirm("Delete this report permanently? This cannot be undone.")) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteReport(report.id)
+      router.push(fromSubmit ? "/submit-report" : "/community-feed")
+    } catch (err) {
+      const apiErr = handleApiError(err)
+      setDeleteError(apiErr.message || "Could not delete report.")
+      setDeleting(false)
+    }
+  }, [report, deleting, router, fromSubmit])
 
   const handleAddComment = useCallback(async () => {
     const text = commentInput.trim()
@@ -446,7 +468,23 @@ export default function ReportDetailsPage({ params }: Props) {
           <i className="fa-solid fa-share-nodes" />
           <span>Share</span>
         </button>
+        {isOwner && (
+          <button
+            className="rd-action-btn rd-action-btn--danger"
+            onClick={handleDelete}
+            disabled={deleting}
+            aria-label="Delete your report"
+          >
+            <i className="fa-solid fa-trash" />
+            <span>{deleting ? "Deleting..." : "Delete"}</span>
+          </button>
+        )}
       </div>
+      {deleteError && (
+        <p style={{ color: "var(--color-danger)", fontSize: 13, margin: "-16px 0 20px" }}>
+          {deleteError}
+        </p>
+      )}
 
       {/* Progress Notes */}
       {progressEntries.length > 0 && (

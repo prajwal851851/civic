@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { createReport, getMyReports } from "@/lib/api/reports"
+import { createReport, getMyReports, deleteReport } from "@/lib/api/reports"
 import { handleApiError } from "@/lib/api/error-handler"
 import { reverseGeocode, detectWard, getWardCentroid, geocode } from "@/lib/geo-utils"
 import type { FeedReport } from "@/lib/api/reports"
@@ -81,6 +81,7 @@ export default function SubmitReportPage() {
 
   const [myReports, setMyReports] = useState<FeedReport[]>([])
   const [myReportsLoading, setMyReportsLoading] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const stats = useMemo(() => {
     const statusCounts = countBy(myReports, r => r.status)
@@ -367,6 +368,20 @@ export default function SubmitReportPage() {
       })
     return () => { cancelled = true }
   }, [activeTab, user])
+
+  const handleDeleteMyReport = useCallback(async (id: number) => {
+    if (!confirm("Delete this report permanently? This cannot be undone.")) return
+    setDeletingId(id)
+    try {
+      await deleteReport(id)
+      setMyReports((prev) => prev.filter((r) => r.id !== id))
+    } catch (err) {
+      const apiErr = handleApiError(err)
+      alert(apiErr.message || "Could not delete report.")
+    } finally {
+      setDeletingId(null)
+    }
+  }, [])
 
   // Cleanup preview URLs on unmount only
   const previewUrls = useRef<string[]>([])
@@ -733,6 +748,7 @@ export default function SubmitReportPage() {
                           <th>Category</th>
                           <th>Address</th>
                           <th>Status</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody id="svReportsBody">
@@ -742,13 +758,13 @@ export default function SubmitReportPage() {
                           const statusBgs: Record<string, string> = { open: '#FEE2E2', unapproved: '#F3F4F6', in_review: '#FEF3C7', resolved: '#D1FAE5', rejected: '#F3F4F6' }
                           const statusLabels: Record<string, string> = { open: 'Open', unapproved: 'Unapproved', in_review: 'In Review', resolved: 'Resolved', rejected: 'Rejected' }
                           return (
-                          <tr key={r.id} className="sv-table-row-clickable" onClick={() => router.push(`/report-details/${r.id}?from=submit-report`)}>
-                            <td>{r.title}</td>
-                            <td>{new Date(r.created_at).toLocaleDateString()}</td>
-                            <td>{r.ward_number}</td>
-                            <td>{CATEGORY_LABEL[r.category] || r.category}</td>
-                            <td>{r.address || '-'}</td>
-                            <td>
+                          <tr key={r.id} className="sv-table-row-clickable">
+                            <td onClick={() => router.push(`/report-details/${r.id}?from=submit-report`)}>{r.title}</td>
+                            <td onClick={() => router.push(`/report-details/${r.id}?from=submit-report`)}>{new Date(r.created_at).toLocaleDateString()}</td>
+                            <td onClick={() => router.push(`/report-details/${r.id}?from=submit-report`)}>{r.ward_number}</td>
+                            <td onClick={() => router.push(`/report-details/${r.id}?from=submit-report`)}>{CATEGORY_LABEL[r.category] || r.category}</td>
+                            <td onClick={() => router.push(`/report-details/${r.id}?from=submit-report`)}>{r.address || '-'}</td>
+                            <td onClick={() => router.push(`/report-details/${r.id}?from=submit-report`)}>
                               <span className="mv-list-status" style={{
                                 background: statusBgs[effectiveStatus] || '#FEE2E2',
                                 color: statusColors[effectiveStatus] || '#EF4444',
@@ -756,6 +772,29 @@ export default function SubmitReportPage() {
                               }}>
                                 {statusLabels[effectiveStatus] || effectiveStatus}
                               </span>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteMyReport(r.id)
+                                }}
+                                disabled={deletingId === r.id}
+                                style={{
+                                  background: '#FEE2E2',
+                                  color: '#DC2626',
+                                  border: 'none',
+                                  borderRadius: 6,
+                                  padding: '6px 12px',
+                                  cursor: deletingId === r.id ? 'not-allowed' : 'pointer',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {deletingId === r.id ? 'Deleting...' : 'Delete'}
+                              </button>
                             </td>
                           </tr>
                           )
