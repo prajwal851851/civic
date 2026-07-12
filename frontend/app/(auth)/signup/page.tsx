@@ -40,10 +40,17 @@ function SignupForm() {
     setTimeout(() => setSendDisabled(false), 30000)
   }
 
+  const HARDCODED_OTP = "123456"
+
   const handleCitizenSignup = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
     const form = e.currentTarget
+    const code = (form.querySelector("#suCode") as HTMLInputElement).value.trim()
+    if (code !== HARDCODED_OTP) {
+      setError("Invalid verification code. Use 123456.")
+      return
+    }
     const phone_number = (form.querySelector("#suPhone") as HTMLInputElement).value
     const email = (form.querySelector("#suEmail") as HTMLInputElement).value
     const full_name = (form.querySelector("#suName") as HTMLInputElement).value
@@ -121,11 +128,24 @@ function SignupForm() {
                 Send Code
               </button>
             </div>
-            {verifyStatus && <div className="su-verify-status" id="verifyStatus">Code sent!</div>}
+            {verifyStatus && (
+              <div className="su-verify-status" id="verifyStatus">
+                Code sent! Use <strong>123456</strong>
+              </div>
+            )}
           </div>
           <div className="auth-fg">
             <label htmlFor="suCode">Verification Code</label>
-            <input type="text" id="suCode" placeholder="6-digit code" required className="su-otp-input" />
+            <input
+              type="text"
+              id="suCode"
+              placeholder="123456"
+              required
+              maxLength={6}
+              inputMode="numeric"
+              className="su-otp-input"
+              defaultValue="123456"
+            />
           </div>
           <div className="auth-fg">
             <label htmlFor="suEmail">Email Address</label>
