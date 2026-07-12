@@ -32,3 +32,9 @@ npm run dev
 ```
 
 Frontend defaults to `http://localhost:8000/api`.
+
+## Vercel (frontend)
+
+In the Vercel project: **Settings → General → Root Directory** → set to `frontend` → Save → Redeploy.
+
+The Next.js app lives in `frontend/`; building from the repo root will fail.
