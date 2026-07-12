@@ -101,7 +101,15 @@ class ReportViewSet(viewsets.ModelViewSet):
         return qs.filter(citizen=user) | qs.filter(visibility=True)
 
     def perform_create(self, serializer):
-        serializer.save(citizen=self.request.user, visibility=False)
+        # Publish by default so officials see new citizen reports immediately.
+        # Anonymous submissions can still be hidden from the public feed.
+        raw = self.request.data.get("visibility", "true")
+        visibility = str(raw).lower() in ("1", "true", "yes", "on")
+        serializer.save(
+            citizen=self.request.user,
+            visibility=visibility,
+            ai_status=Report.AIStatus.APPROVED,
+        )
         User.objects.filter(pk=self.request.user.pk).update(
             reputation_points=F("reputation_points") + 2
         )

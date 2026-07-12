@@ -16,5 +16,6 @@ class DashboardReportSerializer(serializers.ModelSerializer):
             "municipality",
             "ward_number",
             "citizen_name",
+            "visibility",
             "created_at",
         ]

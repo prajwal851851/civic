@@ -34,6 +34,7 @@ interface RecentReport {
   municipality: string
   ward_number: number | null
   citizen_name: string
+  visibility?: boolean
   created_at: string
 }
 

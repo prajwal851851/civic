@@ -66,6 +66,7 @@ class RecentReportsView(ListAPIView):
             "status",
             "municipality",
             "ward_number",
+            "visibility",
             "citizen__full_name",
             "created_at",
         )
@@ -84,7 +85,7 @@ class RecentReportsView(ListAPIView):
         if category:
             qs = qs.filter(category=category)
 
-        return qs
+        return qs.order_by("-created_at")
 
 
 class AnalyticsView(APIView):
