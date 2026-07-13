@@ -1,110 +1,87 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { useAuth } from "@/lib/auth-context"
+import { getNotices, createNotice } from "@/lib/api/notices"
+import { handleApiError } from "@/lib/api/error-handler"
 
-interface Notice {
+interface NoticeItem {
   id: number
   title: string
-  description: string
-  location: string
-  date: string
+  content: string
+  municipality: string
+  ward_number: number | null
+  is_pinned: boolean
+  created_at: string
+  created_by_name: string
 }
 
-const initialNotices: Notice[] = [
-  { id: 1, title: "Road maintenance near Baneshwor", description: "KMC will begin road maintenance on the Baneshwor stretch from New Baneshwor Chowk to Gyaneswor from Sunday. Traffic will be diverted via alternate routes.", location: "Baneshwor, Kathmandu", date: "Posted 2 days ago" },
-  { id: 2, title: "Water supply interruption tomorrow", description: "Water supply will be suspended in Wards 3, 5, and 8 from 8 AM to 4 PM on Thursday due to scheduled maintenance.", location: "Wards 3, 5, 8", date: "Posted 3 days ago" },
-  { id: 3, title: "New waste collection schedule", description: "KMC has revised the waste collection schedule for Wards 1—8. Collection will now happen twice a week on designated days.", location: "Kathmandu Metropolitan City", date: "Posted 5 days ago" },
-  { id: 4, title: "Traffic diversion notice", description: "Traffic will be diverted on Durbar Marg from 10 PM to 5 AM for three nights starting Monday for road resurfacing.", location: "Durbar Marg, Kathmandu", date: "Posted 1 week ago" },
-]
+function formatPosted(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (days === 0) return "Posted today"
+  if (days === 1) return "Posted yesterday"
+  return `Posted ${days} days ago`
+}
 
 export default function OfficialNoticesPage() {
-  const [notices, setNotices] = useState(initialNotices)
+  const { user } = useAuth()
+  const [notices, setNotices] = useState<NoticeItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [location, setLocation] = useState("")
-  const [leafletLoaded, setLeafletLoaded] = useState(false)
+  const [content, setContent] = useState("")
+  const [wardNumber, setWardNumber] = useState("")
+  const [cityWide, setCityWide] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const mapEl = useRef<HTMLDivElement>(null)
-  const mapInstance = useRef<any>(null)
-  const marker = useRef<any>(null)
-
-  useEffect(() => {
-    if ((window as any).L) { setLeafletLoaded(true); return }
-    const s = document.createElement("script")
-    s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    s.onload = () => setLeafletLoaded(true)
-    document.head.appendChild(s)
+  const fetchNotices = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getNotices() as { results?: NoticeItem[] } | NoticeItem[]
+      const items = Array.isArray(data) ? data : (data.results ?? [])
+      setNotices(items)
+    } catch (err) {
+      setError(handleApiError(err).message)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
-    if (!leafletLoaded || !mapEl.current || !showForm) return
-    const L = (window as any).L
-    if (mapInstance.current) { mapInstance.current.invalidateSize(); return }
-    const map = L.map(mapEl.current).setView([27.7172, 85.3240], 13)
-    const streetLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
-    })
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
-    })
-    streetLayer.addTo(map)
-    L.control.layers({ Street: streetLayer, Satellite: satelliteLayer }, null, { position: 'bottomleft' }).addTo(map)
-    map.on("click", (e: any) => {
-      if (marker.current) map.removeLayer(marker.current)
-      marker.current = L.marker(e.latlng).addTo(map)
-      const loc = `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`
-      setLocation(loc)
-    })
-    mapInstance.current = map
-    setTimeout(() => map.invalidateSize(), 100)
-    return () => {
-      map.remove()
-      mapInstance.current = null
-      marker.current = null
+    fetchNotices()
+  }, [fetchNotices])
+
+  useEffect(() => {
+    if (user?.ward_number && !wardNumber) {
+      setWardNumber(String(user.ward_number))
     }
-  }, [leafletLoaded, showForm])
+  }, [user, wardNumber])
 
-  const geocode = (q: string) => {
-    if (!q.trim() || !mapInstance.current) return
-    const L = (window as any).L
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&countrycodes=np`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.length) return
-        const { lat, lon, display_name } = data[0]
-        mapInstance.current.setView([lat, lon], 15)
-        if (marker.current) mapInstance.current.removeLayer(marker.current)
-        marker.current = L.marker([lat, lon]).addTo(mapInstance.current)
-        setLocation(display_name)
-      })
-      .catch(() => {})
-  }
-
-  let geocodeTimer = useRef<any>(null)
-  const handleLocationInput = (val: string) => {
-    setLocation(val)
-    if (geocodeTimer.current) clearTimeout(geocodeTimer.current)
-    geocodeTimer.current = setTimeout(() => geocode(val), 600)
-  }
-
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
-    const newNotice: Notice = {
-      id: Date.now(),
-      title: title.trim(),
-      description: description.trim(),
-      location: location.trim() || "Kathmandu",
-      date: "Just now",
+    if (!title.trim() || !content.trim()) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const created = await createNotice({
+        title: title.trim(),
+        content: content.trim(),
+        municipality: user?.municipality || "Kathmandu",
+        ward_number: cityWide ? null : (wardNumber ? Number(wardNumber) : null),
+        is_pinned: false,
+      }) as NoticeItem
+      setNotices((prev) => [created, ...prev])
+      setTitle("")
+      setContent("")
+      setShowForm(false)
+    } catch (err) {
+      setSubmitError(handleApiError(err).message)
+    } finally {
+      setSubmitting(false)
     }
-    setNotices([newNotice, ...notices])
-    setTitle("")
-    setDescription("")
-    setLocation("")
-    setShowForm(false)
   }
 
   return (
@@ -137,12 +114,19 @@ export default function OfficialNoticesPage() {
         </button>
       </div>
 
+      {error && (
+        <div style={{ color: "#EF4444", fontSize: 14, marginBottom: 16, padding: 12, background: "#FEE2E2", borderRadius: 8 }}>
+          {error}
+          <button onClick={fetchNotices} style={{ marginLeft: 12, background: "none", border: "none", color: "#DC2626", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>Retry</button>
+        </div>
+      )}
+
       {showForm && (
-        <div className="pv-modal-overlay" style={{ display: "flex" }} onClick={() => setShowForm(false)}>
+        <div className="pv-modal-overlay" style={{ display: "flex" }} onClick={() => !submitting && setShowForm(false)}>
           <div className="pv-modal-box" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
             <div className="pv-modal-header">
               <h2>Create New Notice</h2>
-              <button className="pv-modal-close" onClick={() => setShowForm(false)}>&#x2715;</button>
+              <button className="pv-modal-close" onClick={() => setShowForm(false)} disabled={submitting}>&#x2715;</button>
             </div>
             <form onSubmit={handleCreate} style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 20 }}>
               <div className="pv-fg">
@@ -160,50 +144,77 @@ export default function OfficialNoticesPage() {
                 />
               </div>
               <div className="pv-fg">
-                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: "block" }}>Description</label>
+                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: "block" }}>
+                  Content <span style={{ color: "var(--color-danger)" }}>*</span>
+                </label>
                 <textarea
-                  placeholder="Describe the notice details..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
+                  placeholder="Describe the notice details citizens need to know..."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows={5}
+                  required
                   style={{ width: "100%", padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border)", fontSize: 15, resize: "vertical", background: "var(--color-bg)", color: "var(--color-text)", outline: "none", fontFamily: "inherit" }}
                 />
               </div>
               <div className="pv-fg">
-                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: "block" }}>Location</label>
-                <input
-                  type="text"
-                  placeholder="Type a location or click on the map"
-                  value={location}
-                  onChange={(e) => handleLocationInput(e.target.value)}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border)", fontSize: 15, background: "var(--color-bg)", color: "var(--color-text)", outline: "none", marginBottom: 10 }}
-                />
-                <div ref={mapEl} style={{ width: "100%", height: 280, borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border)", overflow: "hidden" }} />
-                <p style={{ fontSize: 12, color: "var(--color-muted)", margin: "6px 0 0" }}>Click on the map to drop a pin, or type a location above.</p>
+                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, display: "block" }}>Audience</label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, marginBottom: 10, cursor: "pointer" }}>
+                  <input type="radio" checked={cityWide} onChange={() => setCityWide(true)} />
+                  All of Kathmandu (city-wide)
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+                  <input type="radio" checked={!cityWide} onChange={() => setCityWide(false)} />
+                  Specific ward only
+                </label>
+                {!cityWide && (
+                  <input
+                    type="number"
+                    min={1}
+                    max={32}
+                    placeholder="Ward number"
+                    value={wardNumber}
+                    onChange={(e) => setWardNumber(e.target.value)}
+                    style={{ width: "100%", marginTop: 10, padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border)", fontSize: 15, background: "var(--color-bg)", color: "var(--color-text)" }}
+                  />
+                )}
               </div>
+              {submitError && (
+                <p style={{ color: "var(--color-danger)", fontSize: 13, margin: 0 }}>{submitError}</p>
+              )}
               <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
-                <button type="button" className="pv-btn pv-btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-                <button type="submit" className="pv-btn pv-btn-primary">Publish Notice</button>
+                <button type="button" className="pv-btn pv-btn-secondary" onClick={() => setShowForm(false)} disabled={submitting}>Cancel</button>
+                <button type="submit" className="pv-btn pv-btn-primary" disabled={submitting}>
+                  {submitting ? "Publishing..." : "Publish Notice"}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      <div className="hm-notice-list">
-        {notices.length === 0 && (
-          <p style={{ textAlign: "center", color: "var(--color-muted)", padding: 40 }}>No notices yet.</p>
-        )}
-        {notices.map((n) => (
-          <div key={n.id} className="hm-notice">
-            <div>
-              <div className="hm-notice-title">{n.title}</div>
-              <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>{n.location}</div>
-              <div className="hm-notice-date">{n.date}</div>
+      {loading && <p style={{ textAlign: "center", color: "var(--color-muted)", padding: 40 }}>Loading notices...</p>}
+
+      {!loading && (
+        <div className="hm-notice-list">
+          {notices.length === 0 && (
+            <p style={{ textAlign: "center", color: "var(--color-muted)", padding: 40 }}>No notices published yet.</p>
+          )}
+          {notices.map((n) => (
+            <div key={n.id} className="hm-notice">
+              <div>
+                <div className="hm-notice-title">{n.title}</div>
+                <div style={{ fontSize: 13, color: "var(--color-muted)", marginTop: 4 }}>
+                  {n.municipality}{n.ward_number ? `, Ward ${n.ward_number}` : " (city-wide)"}
+                </div>
+                <p style={{ fontSize: 14, color: "var(--color-text)", margin: "8px 0 4px", lineHeight: 1.5 }}>
+                  {n.content.length > 160 ? `${n.content.slice(0, 160)}…` : n.content}
+                </p>
+                <div className="hm-notice-date">{formatPosted(n.created_at)}</div>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

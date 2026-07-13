@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -10,17 +11,17 @@ from notifications.models import Notification
 def create_notice_notifications(sender, instance, created, **kwargs):
     if not created or not instance.is_published:
         return
-    citizens = User.objects.filter(
-        role=User.Role.CITIZEN,
-        municipality__iexact=instance.municipality,
+    municipality = (instance.municipality or "Kathmandu").strip()
+    citizens = User.objects.filter(role=User.Role.CITIZEN).filter(
+        Q(municipality__iexact=municipality) | Q(municipality="") | Q(municipality__isnull=True)
     )
     if instance.ward_number is not None:
         citizens = citizens.filter(ward_number=instance.ward_number)
-    for citizen in citizens:
+    for citizen in citizens.iterator():
         Notification.objects.create(
             recipient=citizen,
             actor=instance.created_by,
             type=Notification.Type.NOTICE,
             title="New Notice",
-            message="A new municipal notice has been published.",
+            message=f'"{instance.title}" — {instance.content[:200]}',
         )

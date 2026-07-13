@@ -171,6 +171,7 @@ export default function NotificationsPage() {
           {notifications.map(n => (
             <div key={n.id} className={"notif-card" + (!n.is_read ? " notif-unread" : "") + (deleting.has(n.id) ? " notif-deleting" : "")}>
               <div className="notif-body">
+                <div className="notif-title" style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{n.title}</div>
                 <div className="notif-text" dangerouslySetInnerHTML={{ __html: n.message }} />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
                   <span className="notif-time">{formatTime(n.created_at)}</span>
@@ -197,6 +198,17 @@ export default function NotificationsPage() {
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </button>
+                )}
+                {n.type === "NOTICE" && (
+                  <button
+                    className="notif-action-btn"
+                    onClick={() => router.push("/notices")}
+                    title="View notices"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                     </svg>
                   </button>
                 )}

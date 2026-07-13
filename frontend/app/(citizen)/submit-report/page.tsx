@@ -514,7 +514,6 @@ export default function SubmitReportPage() {
       fd.append("address", formData.address)
       fd.append("latitude", finalLat.toFixed(6))
       fd.append("longitude", finalLng.toFixed(6))
-      fd.append("visibility", formData.anonymous ? "false" : "true")
 
       selectedFiles.forEach(sf => {
         if (sf.error) return
