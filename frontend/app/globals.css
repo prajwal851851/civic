@@ -6473,7 +6473,7 @@ body { overflow-x: hidden; width: 100%; }
 }
 .ed-hero-ticket:hover {
   transform: rotate(0deg) translateY(-3px);
-  box-shadow: 7px 7px 0 rgba(193, 75, 46, 0.3);
+  box-shadow: 7px 7px 0 rgba(37, 99, 235, 0.3);
 }
 .ed-ticket-photo {
   display: block;
