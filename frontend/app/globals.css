@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #ffffff;
-  --color-header-bg: #fefdff;
+  --color-bg: #eef2f7;
+  --color-header-bg: #f7f9fc;
   --color-border: #e5e7eb;
   --color-text: #000000;
   --color-muted: #6b7280;
@@ -15,16 +15,16 @@
   --color-success: #22c55e;
   --color-warning: #f59e0b;
   --color-danger: #dc2626;
-  --color-pill-bg: #f3f4f6;
+  --color-pill-bg: #e5e9f0;
   --color-badge-open: #E5E7EB;
   --color-badge-progress: #D1D5DB;
   --color-badge-resolved: #9CA3AF;
-  --color-placeholder: #f3f4f6;
+  --color-placeholder: #e5e9f0;
   --color-surface: #ffffff;
   --color-card-bg: #ffffff;
   --color-heading: #111827;
-  --color-bg-gray: #f9fafb;
-  --color-bg-blue: #eff6ff;
+  --color-bg-gray: #e8edf4;
+  --color-bg-blue: #e8f0fe;
 
   --font-display: var(--font-fraunces), 'Georgia', serif;
   --font-body: var(--font-archivo), system-ui, sans-serif;
